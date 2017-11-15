@@ -28,7 +28,7 @@ module PgInspector
 
     def parse_options(args=ARGV)
       if args[1].nil?
-        self.connections = "locks_output.yml"
+        self.connections = "pg_inspector_locks_output.yml"
       else
         self.connections = args[1]
       end
