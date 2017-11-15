@@ -1,25 +1,22 @@
-require 'trollop'
+#!/usr/bin/env ruby
+require 'bundler/inline'
+require 'pathname'
 require 'yaml'
-require 'pg_inspector/error'
-require 'pg_inspector/pg_inspector_operation'
-require 'pg_inspector/util'
-# gem install ruby-graphviz and be sure to gem uninstall graphviz if it's installed before
-require 'graphviz'
-require 'nokogiri'
+
+gemfile do
+  source 'https://rubygems.org'
+
+  gem 'nokogiri', '1.8.1'
+  gem 'ruby-graphviz', '1.2.3'
+end
 
 module PgInspector
-  class LockGraph < PgInspectorOperation
-    HELP_MSG_SHORT = 'Generate human readable lock graph'.freeze
-    attr_accessor :data, :connection_blocks
-
-    def parse_options(args)
-      self.options = Trollop.options(args) do
-        opt(:connections, "Human readable connection information with locks",
-            :type => :string, :short => "c", :default => DEFAULT_OUTPUT_PATH + "locks_output.yml")
-      end
-    end
+  class LockGraph
+    DEFAULT_OUTPUT_PATH = Pathname.new(__dir__).join("output").freeze
+    attr_accessor :connections, :data, :connection_blocks
 
     def run
+      parse_options
       load_lock_connection_file
       obtain_block_info
       generate_lock_graph
@@ -29,8 +26,19 @@ module PgInspector
 
     private
 
+    def parse_options(args=ARGV)
+      if args[1].nil?
+        self.connections = "locks_output.yml"
+      else
+        self.connections = args[1]
+      end
+    end
+
     def load_lock_connection_file
-      self.data = YAML.load_file(options[:connections])
+      self.data = YAML.load_file(connections)
+    rescue => e
+      puts e.message
+      exit(1)
     end
 
     def obtain_block_info
@@ -67,7 +75,7 @@ module PgInspector
 
     def notify_finish
       puts "Update output.svg and table.html in pg_inspector/output successful."
-      puts "Please open pg_inspector/lock_graph.html in browser to analysis."
+      puts "Please open pg_inspector_ui/lock_graph.html in browser to analysis."
     end
 
     def hash_to_html_table(hash, title_key)
@@ -97,3 +105,5 @@ module PgInspector
     end
   end
 end
+
+PgInspector::LockGraph.new.run
